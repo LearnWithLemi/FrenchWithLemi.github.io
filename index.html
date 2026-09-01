@@ -86,6 +86,8 @@
       margin: 16px 0 10px;
       text-align: center;
       transition: 0.2s ease;
+      -webkit-user-select: auto;
+      user-select: auto;
     }
 
     .auth-card input:focus {
@@ -480,6 +482,7 @@
 
 <body oncontextmenu="return false;">
 
+  <!-- Authentication Overlay -->
   <div id="auth-overlay">
     <div class="auth-card">
       <i class="fa-solid fa-graduation-cap" style="font-size: 2.5rem; color: var(--fr-blue); margin-bottom: 12px;"></i>
@@ -487,4 +490,468 @@
       <p style="color: #64748B; font-size: 0.9rem;">Enter your student passcode or teacher admin key.</p>
       <input type="password" id="passcode-input" placeholder="••••••••••••" autofocus />
       <button class="btn-submit" onclick="verifyAccess()">Enter Portal</button>
-      <div id="auth-error" style="color: var(--fr-red); font-size: 0.
+      <div id="auth-error" style="color: var(--fr-red); font-size: 0.85rem; margin-top: 10px; display: none; font-weight: 700;">
+        Invalid passcode. Please try again.
+      </div>
+    </div>
+  </div>
+
+  <div class="tricolor-stripe">
+    <div class="stripe-blue"></div>
+    <div class="stripe-white"></div>
+    <div class="stripe-red"></div>
+  </div>
+
+  <header>
+    <div class="brand-title">
+      <i class="fa-solid fa-book-open"></i>
+      FrenchWithLemi <span>Hub</span>
+    </div>
+    <div class="subtitle">E-Learning Portal & Educational Material Vault</div>
+  </header>
+
+  <!-- Admin Toolbar -->
+  <div id="admin-toolbar">
+    <div class="admin-info">
+      <i class="fa-solid fa-user-shield"></i>
+      <span>Teacher Mode Active</span>
+    </div>
+    <div class="admin-actions">
+      <button class="btn-admin" onclick="openAddModal()"><i class="fa-solid fa-plus"></i> Add Material</button>
+      <button class="btn-admin-secondary" onclick="exportDataBackup()"><i class="fa-solid fa-download"></i> Backup Data</button>
+      <button class="btn-admin-secondary" onclick="logoutAdmin()"><i class="fa-solid fa-right-from-bracket"></i> Lock Portal</button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="controls-container">
+    <div class="pill-group" id="grade-filters">
+      <button class="filter-btn active" onclick="setFilter('grade', 'ALL', this)">All Grades</button>
+      <button class="filter-btn" onclick="setFilter('grade', 'Grade 3-5', this)">Grade 3-5</button>
+      <button class="filter-btn" onclick="setFilter('grade', 'Grade 6-8', this)">Grade 6-8</button>
+      <button class="filter-btn" onclick="setFilter('grade', 'Grade 9-10', this)">Grade 9-10</button>
+      <button class="filter-btn" onclick="setFilter('grade', 'Grade 11-12', this)">Grade 11-12</button>
+    </div>
+
+    <div class="pill-group" id="board-filters">
+      <button class="filter-btn board-btn active" onclick="setFilter('board', 'ALL', this)">All Boards</button>
+      <button class="filter-btn board-btn" onclick="setFilter('board', 'CBSE', this)">CBSE</button>
+      <button class="filter-btn board-btn" onclick="setFilter('board', 'ICSE', this)">ICSE</button>
+      <button class="filter-btn board-btn" onclick="setFilter('board', 'State Board', this)">State Board</button>
+      <button class="filter-btn board-btn" onclick="setFilter('board', 'IB/IGCSE', this)">IB / IGCSE</button>
+    </div>
+  </div>
+
+  <!-- Cards Grid Container -->
+  <div class="grid-container" id="cards-container">
+    <div id="loader">Loading learning resources...</div>
+  </div>
+
+  <!-- Admin Add / Edit Modal -->
+  <div id="admin-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">Add Learning Material</h3>
+        <button class="btn-icon" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="resource-form" onsubmit="saveResource(event)">
+        <input type="hidden" id="edit-id" />
+        
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="res-title" required placeholder="e.g. Passé Composé Rules" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group" style="flex: 1;">
+            <label>Grade Bracket</label>
+            <select id="res-grade">
+              <option value="Grade 3-5">Grade 3-5</option>
+              <option value="Grade 6-8">Grade 6-8</option>
+              <option value="Grade 9-10">Grade 9-10</option>
+              <option value="Grade 11-12">Grade 11-12</option>
+              <option value="ALL">All Grades</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label>Board</label>
+            <select id="res-board">
+              <option value="CBSE">CBSE</option>
+              <option value="ICSE">ICSE</option>
+              <option value="State Board">State Board</option>
+              <option value="IB/IGCSE">IB / IGCSE</option>
+              <option value="ALL">All Boards</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Material Type</label>
+          <select id="res-type" onchange="toggleContentTypeInputs()">
+            <option value="IMAGE_FILE">Upload Local Photo/Image File</option>
+            <option value="IMAGE_URL">Direct Image URL</option>
+            <option value="HTML_EMBED">HTML Embed Code / Minigame iframe</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="input-file-container">
+          <label>Select Photo File</label>
+          <div class="file-input-wrapper">
+            <input type="file" id="res-file" accept="image/*" onchange="handleDirectFileUpload(event)" />
+            <div id="file-status" style="font-size: 0.8rem; color: #64748B; margin-top: 6px;">Supports PNG, JPG, WebP</div>
+          </div>
+        </div>
+
+        <div class="form-group" id="input-payload-container" style="display: none;">
+          <label id="payload-label">Direct Image URL</label>
+          <textarea id="res-payload" rows="3" placeholder="https://... or <iframe>...</iframe>"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Description / Teacher Notes</label>
+          <textarea id="res-desc" rows="2" placeholder="Brief guide for students..."></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-admin-secondary" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn-admin"><i class="fa-solid fa-floppy-disk"></i> Save Material</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // -------------------------------------------------------------
+    // 1. CONFIGURATION & STATE
+    // -------------------------------------------------------------
+    let allItems = [];
+    let activeGrade = 'ALL';
+    let activeBoard = 'ALL';
+    let isAdmin = false;
+    let base64Temp = '';
+
+    // Passcodes
+    const ADMIN_PASSCODE = 'ProfesseurLemi2026#';
+    const STUDENT_PASSCODE = 'Bonjour2026!';
+
+    // Seed Data
+    const defaultData = [
+      {
+        id: 'seed-1',
+        gradeBracket: 'Grade 3-5',
+        board: 'ALL',
+        title: 'Les Animaux - Flashcards',
+        contentType: 'IMAGE_URL',
+        payload: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop',
+        description: 'Visual vocabulary chart for junior learners.'
+      },
+      {
+        id: 'seed-2',
+        gradeBracket: 'Grade 6-8',
+        board: 'CBSE',
+        title: 'Passé Composé Conjugation Guide',
+        contentType: 'IMAGE_URL',
+        payload: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=600&auto=format&fit=crop',
+        description: 'Complete breakdown of auxiliary verbs Avoir & Être with past participles.'
+      },
+      {
+        id: 'seed-3',
+        gradeBracket: 'Grade 9-10',
+        board: 'ICSE',
+        title: 'Grammar Quiz Minigame',
+        contentType: 'HTML_EMBED',
+        payload: '<div style="background:#002395;color:white;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:15px;text-align:center;"><h4 style="margin-bottom:8px;">Jeu de Grammaire</h4><button onclick="alert(\'Bravo! 10/10\')" style="background:#ED2939;color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:bold;">Start Challenge</button></div>',
+        description: 'Interactive HTML game widget for board exam preparations.'
+      }
+    ];
+
+    // -------------------------------------------------------------
+    // 2. WORKING ACCESS VERIFICATION
+    // -------------------------------------------------------------
+    function verifyAccess() {
+      const input = document.getElementById('passcode-input').value.trim();
+      const errorElement = document.getElementById('auth-error');
+
+      errorElement.style.display = 'none';
+
+      if (input === ADMIN_PASSCODE) {
+        sessionStorage.setItem('fwl_role', 'admin');
+        isAdmin = true;
+        initPortal();
+      } else if (input === STUDENT_PASSCODE) {
+        sessionStorage.setItem('fwl_role', 'student');
+        isAdmin = false;
+        initPortal();
+      } else {
+        errorElement.style.display = 'block';
+      }
+    }
+
+    // Bind Enter key press to submit passcode
+    document.addEventListener('DOMContentLoaded', () => {
+      const passInput = document.getElementById('passcode-input');
+      if (passInput) {
+        passInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            verifyAccess();
+          }
+        });
+      }
+    });
+
+    function initPortal() {
+      document.getElementById('auth-overlay').style.display = 'none';
+      if (isAdmin) {
+        document.getElementById('admin-toolbar').style.display = 'flex';
+      }
+      loadStoredData();
+    }
+
+    // Auto-login during active browser session
+    const savedRole = sessionStorage.getItem('fwl_role');
+    if (savedRole === 'admin') {
+      isAdmin = true;
+      window.addEventListener('DOMContentLoaded', initPortal);
+    } else if (savedRole === 'student') {
+      isAdmin = false;
+      window.addEventListener('DOMContentLoaded', initPortal);
+    }
+
+    function logoutAdmin() {
+      sessionStorage.removeItem('fwl_role');
+      window.location.reload();
+    }
+
+    // Prevent inspection keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (
+        e.key === 'F12' ||
+        (e.ctrlKey && (e.key === 'u' || e.key === 's' || e.key === 'c' || e.key === 'p')) ||
+        (e.metaKey && (e.key === 'u' || e.key === 's' || e.key === 'c' || e.key === 'p'))
+      ) {
+        e.preventDefault();
+      }
+    });
+
+    // -------------------------------------------------------------
+    // 3. DATA PERSISTENCE
+    // -------------------------------------------------------------
+    function loadStoredData() {
+      const local = localStorage.getItem('fwl_learning_data');
+      if (local) {
+        allItems = JSON.parse(local);
+      } else {
+        allItems = [...defaultData];
+        saveToLocalStorage();
+      }
+      renderCards();
+    }
+
+    function saveToLocalStorage() {
+      localStorage.setItem('fwl_learning_data', JSON.stringify(allItems));
+    }
+
+    function exportDataBackup() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allItems, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `FrenchWithLemi_Backup_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    // -------------------------------------------------------------
+    // 4. ADMIN ACTIONS
+    // -------------------------------------------------------------
+    function toggleContentTypeInputs() {
+      const type = document.getElementById('res-type').value;
+      const fileContainer = document.getElementById('input-file-container');
+      const payloadContainer = document.getElementById('input-payload-container');
+      const payloadLabel = document.getElementById('payload-label');
+
+      if (type === 'IMAGE_FILE') {
+        fileContainer.style.display = 'block';
+        payloadContainer.style.display = 'none';
+      } else if (type === 'IMAGE_URL') {
+        fileContainer.style.display = 'none';
+        payloadContainer.style.display = 'block';
+        payloadLabel.innerText = 'Direct Image URL (JPG/PNG/WebP)';
+      } else {
+        fileContainer.style.display = 'none';
+        payloadContainer.style.display = 'block';
+        payloadLabel.innerText = 'Custom HTML Code / Game iframe';
+      }
+    }
+
+    function handleDirectFileUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          base64Temp = e.target.result;
+          document.getElementById('file-status').innerText = `Loaded: ${file.name}`;
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function openAddModal() {
+      document.getElementById('modal-title').innerText = 'Add New Learning Material';
+      document.getElementById('resource-form').reset();
+      document.getElementById('edit-id').value = '';
+      base64Temp = '';
+      document.getElementById('file-status').innerText = 'Supports PNG, JPG, WebP';
+      toggleContentTypeInputs();
+      document.getElementById('admin-modal').style.display = 'flex';
+    }
+
+    function openEditModal(id) {
+      const item = allItems.find(i => i.id === id);
+      if (!item) return;
+
+      document.getElementById('modal-title').innerText = 'Edit Learning Material';
+      document.getElementById('edit-id').value = item.id;
+      document.getElementById('res-title').value = item.title;
+      document.getElementById('res-grade').value = item.gradeBracket;
+      document.getElementById('res-board').value = item.board;
+      document.getElementById('res-desc').value = item.description;
+
+      if (item.contentType === 'IMAGE_FILE') {
+        document.getElementById('res-type').value = 'IMAGE_FILE';
+        base64Temp = item.payload;
+        document.getElementById('file-status').innerText = 'Existing photo attached (Upload new to replace)';
+      } else if (item.contentType === 'IMAGE_URL') {
+        document.getElementById('res-type').value = 'IMAGE_URL';
+        document.getElementById('res-payload').value = item.payload;
+      } else {
+        document.getElementById('res-type').value = 'HTML_EMBED';
+        document.getElementById('res-payload').value = item.payload;
+      }
+
+      toggleContentTypeInputs();
+      document.getElementById('admin-modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('admin-modal').style.display = 'none';
+    }
+
+    function saveResource(e) {
+      e.preventDefault();
+      const editId = document.getElementById('edit-id').value;
+      const type = document.getElementById('res-type').value;
+
+      let payload = '';
+      if (type === 'IMAGE_FILE') {
+        payload = base64Temp;
+        if (!payload) {
+          alert('Please select an image file first.');
+          return;
+        }
+      } else {
+        payload = document.getElementById('res-payload').value.trim();
+        if (!payload) {
+          alert('Please enter a valid URL or HTML payload.');
+          return;
+        }
+      }
+
+      const resourceData = {
+        id: editId || 'res_' + Date.now(),
+        title: document.getElementById('res-title').value.trim(),
+        gradeBracket: document.getElementById('res-grade').value,
+        board: document.getElementById('res-board').value,
+        contentType: type,
+        payload: payload,
+        description: document.getElementById('res-desc').value.trim()
+      };
+
+      if (editId) {
+        const idx = allItems.findIndex(i => i.id === editId);
+        allItems[idx] = resourceData;
+      } else {
+        allItems.unshift(resourceData);
+      }
+
+      saveToLocalStorage();
+      renderCards();
+      closeModal();
+    }
+
+    function deleteResource(id) {
+      if (confirm('Are you sure you want to delete this resource?')) {
+        allItems = allItems.filter(i => i.id !== id);
+        saveToLocalStorage();
+        renderCards();
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 5. RENDERING & FILTERING
+    // -------------------------------------------------------------
+    function setFilter(type, value, element) {
+      if (type === 'grade') {
+        activeGrade = value;
+        document.querySelectorAll('#grade-filters .filter-btn').forEach(btn => btn.classList.remove('active'));
+      } else {
+        activeBoard = value;
+        document.querySelectorAll('#board-filters .filter-btn').forEach(btn => btn.classList.remove('active'));
+      }
+      element.classList.add('active');
+      renderCards();
+    }
+
+    function renderCards() {
+      const container = document.getElementById('cards-container');
+      const filtered = allItems.filter(item => {
+        const gradeMatch = activeGrade === 'ALL' || item.gradeBracket === 'ALL' || item.gradeBracket === activeGrade;
+        const boardMatch = activeBoard === 'ALL' || item.board === 'ALL' || item.board === activeBoard;
+        return gradeMatch && boardMatch;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div id="loader">No resources available for this selection.</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(item => {
+        let mediaHtml = '';
+
+        if (item.contentType === 'HTML_EMBED') {
+          mediaHtml = `<div class="embed-wrapper">${item.payload}</div>`;
+        } else {
+          mediaHtml = `
+            <img src="${item.payload}" alt="${item.title}" loading="lazy" />
+            <div class="watermark-overlay"></div>
+          `;
+        }
+
+        const adminButtons = isAdmin ? `
+          <div class="admin-card-controls" style="display: flex;">
+            <button class="btn-icon" onclick="openEditModal('${item.id}')" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+            <button class="btn-icon" onclick="deleteResource('${item.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        ` : '';
+
+        return `
+          <div class="card">
+            ${adminButtons}
+            <div class="card-preview">
+              ${mediaHtml}
+              <div class="badge-bar">
+                <span class="badge">${item.gradeBracket}</span>
+                <span class="badge" style="background: var(--fr-red);">${item.board}</span>
+              </div>
+            </div>
+            <div class="card-content">
+              <h3 class="card-title">${item.title}</h3>
+              <p class="card-desc">${item.description}</p>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  </script>
+</body>
+</html>
